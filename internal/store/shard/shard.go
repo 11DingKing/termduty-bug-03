@@ -153,7 +153,8 @@ func (l *Lease) Commit() {
 // releases the lock. It is safe to call even when no line was appended.
 func (l *Lease) Rollback(ctx context.Context) error {
 	defer l.store.mu.Unlock()
-	if err := rollbackContext(ctx); err != nil {
+	cleanupCtx := rollbackCleanupContext(ctx)
+	if err := rollbackContext(cleanupCtx); err != nil {
 		return err
 	}
 	info, err := os.Stat(l.path)
@@ -180,6 +181,13 @@ func (l *Lease) Rollback(ctx context.Context) error {
 	}
 	l.store.counts[l.shardID] = l.lineNo
 	return nil
+}
+
+func rollbackCleanupContext(ctx context.Context) context.Context {
+	if ctx == nil {
+		return context.Background()
+	}
+	return context.WithoutCancel(ctx)
 }
 
 func rollbackContext(ctx context.Context) error {
