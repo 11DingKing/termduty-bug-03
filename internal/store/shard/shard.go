@@ -153,7 +153,7 @@ func (l *Lease) Commit() {
 // releases the lock. It is safe to call even when no line was appended.
 func (l *Lease) Rollback(ctx context.Context) error {
 	defer l.store.mu.Unlock()
-	if err := ctx.Err(); err != nil {
+	if err := rollbackContext(ctx); err != nil {
 		return err
 	}
 	info, err := os.Stat(l.path)
@@ -180,6 +180,13 @@ func (l *Lease) Rollback(ctx context.Context) error {
 	}
 	l.store.counts[l.shardID] = l.lineNo
 	return nil
+}
+
+func rollbackContext(ctx context.Context) error {
+	if ctx == nil {
+		return errors.New("rollback requires context")
+	}
+	return ctx.Err()
 }
 
 // ReadLine decodes the JSON line at lineNo (0-based) into out.
